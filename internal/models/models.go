@@ -25,3 +25,12 @@ type Parcel struct {
 	SenderDescription    *string    `json:"SenderDescription"`    // Nullable field
 	MotorbikeDescription *string    `json:"MotorbikeDescription"` // Nullable field
 }
+
+// Notification represents a notification to be sent to a user
+type Notification struct {
+	ID        uint      `gorm:"primaryKey"`
+	UserID    uint      `json:"UserID"`    // The recipient of the notification
+	Message   string    `json:"Message"`   // The notification message
+	CreatedAt time.Time `json:"CreatedAt"` // Timestamp for the notification
+	Read      bool      `json:"Read"`      // Whether the notification has been read
+}

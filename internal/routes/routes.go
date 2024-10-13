@@ -32,5 +32,11 @@ func InitializeRoutes() *mux.Router {
 	adminRoutes.HandleFunc("/parcels", handlers.GetAllParcels).Methods("GET")
 	adminRoutes.HandleFunc("/users", handlers.GetUsers).Methods("GET")
 
+	// Notification routes
+	notificationRoutes := router.PathPrefix("/notifications").Subrouter()
+	notificationRoutes.Use(middleware.JWTMiddleware)
+	notificationRoutes.HandleFunc("", handlers.GetNotifications).Methods("GET")
+	notificationRoutes.HandleFunc("/{id}/read", handlers.MarkNotificationAsRead).Methods("PUT")
+
 	return router
 }

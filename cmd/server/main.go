@@ -2,6 +2,7 @@ package main
 
 import (
 	"go-delivery-app/internal/db"
+	"go-delivery-app/internal/notifications"
 	"go-delivery-app/internal/routes"
 	"log"
 	"net/http"
@@ -18,6 +19,10 @@ func main() {
 
 	// Initialize routes from the routes package
 	router := routes.InitializeRoutes()
+
+	// Start RabbitMQ consumers to process notifications
+	go notifications.ConsumeNotifications("notifications_sender_queue")
+	go notifications.ConsumeNotifications("notifications_motorbike_queue")
 
 	// Start the server
 	log.Fatal(http.ListenAndServe(":8080", router))

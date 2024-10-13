@@ -5,6 +5,8 @@ import (
 	"go-delivery-app/internal/auth"
 	"go-delivery-app/internal/db"
 	"go-delivery-app/internal/models"
+	"go-delivery-app/internal/notifications"
+
 	"go-delivery-app/internal/services"
 	"net/http"
 	"time"
@@ -35,7 +37,7 @@ type PickParcelRequest struct {
 	MotorbikeDescription string `json:"MotorbikeDescription"` // PascalCase for JSON field
 }
 
-// PickParcel allows motorbikes to pick up a parcel by its ID and add motorbike description
+// PickParcel allows motorbikes to pick up a parcel by its ID and notify the sender and motorbike
 func PickParcel(w http.ResponseWriter, r *http.Request) {
 	// Get the authenticated user's claims (motorbike)
 	userClaims, ok := auth.GetUserFromContext(r.Context())
@@ -44,7 +46,7 @@ func PickParcel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if the authenticated user is a motorbike
+	// Check if the authenticated user is NOT a motorbike
 	if userClaims.Role == "sender" {
 		http.Error(w, "Only motorbikes can pick parcels", http.StatusForbidden)
 		return
@@ -65,31 +67,31 @@ func PickParcel(w http.ResponseWriter, r *http.Request) {
 
 	// If the parcel is already picked up or delivered, it cannot be picked again
 	if parcel.Status == "Picked up" || parcel.Status == "Delivered" {
+		w.Header().Set("Content-Type", "application/json")
 		http.Error(w, "Parcel already picked up or delivered", http.StatusBadRequest)
 		return
 	}
 
-	// Parse the request body to get motorbike description
-	var reqBody PickParcelRequest
-	err := json.NewDecoder(r.Body).Decode(&reqBody)
-	if err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
-		return
-	}
-
-	// Update the parcel's status, motorbike ID, and motorbike description
+	// Update the parcel's status and assign the motorbike ID
 	pickupTime := time.Now()
 	parcel.Status = "Picked up"
 	parcel.PickupTime = &pickupTime
-	parcel.MotorbikeID = &userClaims.UserID                     // Assign the motorbike ID from the authenticated user
-	parcel.MotorbikeDescription = &reqBody.MotorbikeDescription // Assign motorbike description (pointer)
+	parcel.MotorbikeID = &userClaims.UserID // Assign the motorbike ID from the authenticated user
 
 	// Save the updated parcel back to the database
 	result := db.DB.Save(&parcel)
 	if result.Error != nil {
+		w.Header().Set("Content-Type", "application/json")
 		http.Error(w, "Failed to update parcel", http.StatusInternalServerError)
 		return
 	}
+
+	// Send notifications to RabbitMQ queues
+	// Notify the sender
+	notifications.PublishNotification("notifications_sender_queue", parcel.SenderID, "Your parcel has been picked up!")
+
+	// Notify the motorbike
+	notifications.PublishNotification("notifications_motorbike_queue", userClaims.UserID, "You have picked up a parcel!")
 
 	// Send the updated parcel as a JSON response
 	w.Header().Set("Content-Type", "application/json")
