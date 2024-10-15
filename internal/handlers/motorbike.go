@@ -100,6 +100,13 @@ func PickParcel(w http.ResponseWriter, r *http.Request) {
 
 // UpdateParcelStatus allows motorbikes to update the status of a parcel to "Delivered"
 func UpdateParcelStatus(w http.ResponseWriter, r *http.Request) {
+	// Get the authenticated user's claims (motorbike)
+	userClaims, ok := auth.GetUserFromContext(r.Context())
+	if !ok || userClaims.UserID == 0 {
+		http.Error(w, "Unauthorized access", http.StatusUnauthorized)
+		return
+	}
+
 	// Use the service to get the authenticated user's details
 	user, err := services.GetAuthenticatedUser(r.Context())
 	if err != nil {
@@ -143,6 +150,12 @@ func UpdateParcelStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to update parcel status", http.StatusInternalServerError)
 		return
 	}
+
+	// Notify the sender
+	notifications.PublishNotification("notifications_sender_queue", parcel.SenderID, "Your parcel has been delivered!")
+
+	// Notify the motorbike
+	notifications.PublishNotification("notifications_motorbike_queue", userClaims.UserID, "You have delivered a parcel!")
 
 	// Send the updated parcel status as a JSON response
 	w.Header().Set("Content-Type", "application/json")

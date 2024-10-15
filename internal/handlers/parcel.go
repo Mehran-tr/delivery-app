@@ -5,6 +5,7 @@ import (
 	"go-delivery-app/internal/auth"
 	"go-delivery-app/internal/db"
 	"go-delivery-app/internal/models"
+	"go-delivery-app/internal/notifications"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -44,6 +45,9 @@ func CreateParcel(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to save parcel", http.StatusInternalServerError)
 		return
 	}
+	// Send a notification to the sender using RabbitMQ
+	message := "Your parcel has been created successfully!"
+	notifications.PublishNotification("notifications_sender_queue", parcel.SenderID, message)
 
 	// Set response header to application/json and return the created parcel
 	w.Header().Set("Content-Type", "application/json")
