@@ -6,7 +6,6 @@ import (
 	"go-delivery-app/internal/db"
 	"go-delivery-app/internal/models"
 	"go-delivery-app/internal/notifications"
-
 	"go-delivery-app/internal/services"
 	"net/http"
 	"time"
@@ -49,6 +48,15 @@ func PickParcel(w http.ResponseWriter, r *http.Request) {
 	// Check if the authenticated user is NOT a motorbike
 	if userClaims.Role == "sender" {
 		http.Error(w, "Only motorbikes can pick parcels", http.StatusForbidden)
+		return
+	}
+
+	// Check if the motorbike already has an ongoing parcel (status: "Picked up")
+	var ongoingParcel models.Parcel
+	db.DB.Where("motorbike_id = ? AND status = ?", userClaims.UserID, "Picked up").First(&ongoingParcel)
+
+	if ongoingParcel.ID != 0 {
+		http.Error(w, "You have already picked up a parcel. Deliver it before picking up another.", http.StatusForbidden)
 		return
 	}
 
