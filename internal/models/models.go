@@ -24,6 +24,7 @@ type Parcel struct {
 	MotorbikeID          *uint      `json:"MotorbikeID"`
 	SenderDescription    *string    `json:"SenderDescription"`    // Nullable field
 	MotorbikeDescription *string    `json:"MotorbikeDescription"` // Nullable field
+	CanceledAt           *time.Time `json:"canceled_at"`          // Nullable field
 }
 
 // Notification represents a notification to be sent to a user

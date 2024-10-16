@@ -80,6 +80,13 @@ func PickParcel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// If the parcel is already canceled , it cannot be picked
+	if parcel.Status == "Canceled" {
+		w.Header().Set("Content-Type", "application/json")
+		http.Error(w, "Parcel already Canceled", http.StatusBadRequest)
+		return
+	}
+
 	// Update the parcel's status and assign the motorbike ID
 	pickupTime := time.Now()
 	parcel.Status = "Picked up"
