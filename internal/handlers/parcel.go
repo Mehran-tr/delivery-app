@@ -155,3 +155,86 @@ func CancelParcel(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"message": "Parcel has been canceled"})
 }
+
+// RateMotorbike allows a sender to rate the motorbike after the parcel is delivered
+func RateMotorbike(w http.ResponseWriter, r *http.Request) {
+	// Get the authenticated user's claims (sender)
+
+	userClaims, ok := auth.GetUserFromContext(r.Context())
+	if !ok || userClaims.UserID == 0 {
+		http.Error(w, "Unauthorized access", http.StatusUnauthorized)
+		return
+	}
+
+	// Ensure the user is a sender
+	//if userClaims.Role != "sender" {
+	//	http.Error(w, "Only senders can rate motorbikes", http.StatusForbidden)
+	//	return
+	//}
+
+	// Retrieve the parcel ID from the URL
+	parcelID := mux.Vars(r)["id"]
+	var parcel models.Parcel
+
+	// Retrieve the parcel from the database
+	db.DB.First(&parcel, parcelID)
+
+	// Check if the parcel exists and is in "Delivered" status
+	if parcel.ID == 0 {
+		http.Error(w, "Parcel not found", http.StatusNotFound)
+		return
+	}
+
+	if parcel.Status != "Delivered" {
+		http.Error(w, "You can only rate motorbikes after the parcel is delivered", http.StatusBadRequest)
+		return
+	}
+
+	// Ensure the sender is rating their own parcel
+	if parcel.SenderID != userClaims.UserID {
+		http.Error(w, "You can only rate motorbikes for parcels you sent", http.StatusForbidden)
+		return
+	}
+
+	// Check if the parcel has already been rated
+	var existingRating models.Rating
+	db.DB.Where("parcel_id = ?", parcel.ID).First(&existingRating)
+	if existingRating.ID != 0 {
+		http.Error(w, "You have already rated this delivery", http.StatusBadRequest)
+		return
+	}
+
+	// Parse the rating from the request body
+	var input struct {
+		Rating int `json:"rating"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate the rating (must be between 1 and 5)
+	if input.Rating < 1 || input.Rating > 5 {
+		http.Error(w, "Rating must be between 1 and 5", http.StatusBadRequest)
+		return
+	}
+
+	// Create a new rating and save it to the database
+	rating := models.Rating{
+		SenderID:    userClaims.UserID,
+		MotorbikeID: *parcel.MotorbikeID, // MotorbikeID is fetched from the parcel
+		ParcelID:    parcel.ID,
+		Rating:      input.Rating,
+		CreatedAt:   time.Now(),
+	}
+
+	result := db.DB.Create(&rating)
+	if result.Error != nil {
+		http.Error(w, "Failed to save the rating", http.StatusInternalServerError)
+		return
+	}
+
+	// Send a success response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Rating submitted successfully"})
+}

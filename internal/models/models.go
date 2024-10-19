@@ -35,3 +35,13 @@ type Notification struct {
 	CreatedAt time.Time `json:"CreatedAt"` // Timestamp for the notification
 	Read      bool      `json:"Read"`      // Whether the notification has been read
 }
+
+// Rating represents the rating given by a sender to a motorbike after parcel delivery
+type Rating struct {
+	ID          uint      `gorm:"primary_key" json:"id"`
+	SenderID    uint      `json:"sender_id"`    // ID of the sender who gave the rating
+	MotorbikeID uint      `json:"motorbike_id"` // ID of the motorbike being rated
+	ParcelID    uint      `json:"parcel_id"`    // ID of the parcel related to the rating
+	Rating      int       `json:"rating"`       // Rating value (1 to 5)
+	CreatedAt   time.Time `json:"created_at"`   // Timestamp when the rating was created
+}

@@ -21,6 +21,7 @@ func InitializeRoutes() *mux.Router {
 	senderRoutes.HandleFunc("/parcel", handlers.CreateParcel).Methods("POST")
 	senderRoutes.HandleFunc("/parcel/{id}", handlers.GetParcelStatus).Methods("GET")
 	senderRoutes.HandleFunc("/parcel/{id}/cancel", handlers.CancelParcel).Methods("POST")
+	senderRoutes.HandleFunc("/parcel/{id}/rate", handlers.RateMotorbike).Methods("POST")
 
 	motorbikeRoutes := router.PathPrefix("/motorbike").Subrouter()
 	motorbikeRoutes.Use(middleware.JWTMiddleware)
