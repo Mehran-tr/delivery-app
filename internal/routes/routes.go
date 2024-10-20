@@ -29,6 +29,7 @@ func InitializeRoutes() *mux.Router {
 	motorbikeRoutes.HandleFunc("/parcel/{id}/pickup", handlers.PickParcel).Methods("POST")
 	motorbikeRoutes.HandleFunc("/parcel/{id}/update", handlers.UpdateParcelStatus).Methods("PUT")
 	motorbikeRoutes.HandleFunc("/parcel/{id}/cancel", handlers.CancelParcel).Methods("POST")
+	motorbikeRoutes.HandleFunc("/ratings", handlers.GetMotorbikeRatings).Methods("GET")
 
 	adminRoutes := router.PathPrefix("/admin").Subrouter()
 	adminRoutes.Use(middleware.JWTMiddleware)

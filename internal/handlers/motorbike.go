@@ -176,3 +176,47 @@ func UpdateParcelStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"message": "Parcel marked as delivered"})
 }
+
+// GetMotorbikeRatings allows a motorbike to see their ratings
+func GetMotorbikeRatings(w http.ResponseWriter, r *http.Request) {
+	// Get the authenticated motorbike's claims
+	userClaims, ok := auth.GetUserFromContext(r.Context())
+	if !ok || userClaims.UserID == 0 {
+		http.Error(w, "Unauthorized access", http.StatusUnauthorized)
+		return
+	}
+
+	// Retrieve all ratings for this motorbike
+	var ratings []models.Rating
+	db.DB.Where("motorbike_id = ?", userClaims.UserID).Find(&ratings)
+
+	// If there are no ratings, return a message
+	if len(ratings) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"message": "You have no ratings yet."})
+		return
+	}
+
+	// Calculate the average rating
+	totalRatings := len(ratings)
+	totalPoints := 0
+	ratingBreakdown := map[int]int{1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+
+	for _, rating := range ratings {
+		totalPoints += rating.Rating
+		ratingBreakdown[rating.Rating]++
+	}
+
+	averageRating := float64(totalPoints) / float64(totalRatings)
+
+	// Prepare the response
+	response := map[string]interface{}{
+		"total_ratings":    totalRatings,
+		"average_rating":   averageRating,
+		"rating_breakdown": ratingBreakdown, // E.g., 5-star: X, 4-star: Y
+	}
+
+	// Send the response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
